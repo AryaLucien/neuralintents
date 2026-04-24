@@ -4,10 +4,12 @@ import random
 import pickle
 
 from typing import Union
+ 
 
 import nltk
 import numpy as np
 
+from nltk.tokenize import word_tokenize 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 from tensorflow.keras.models import Sequential, load_model
@@ -19,6 +21,8 @@ class BasicAssistant:
 
     def __init__(self, intents_data: Union[str, os.PathLike, dict], method_mappings: dict = {}, hidden_layers: list = None, model_name: str = "basic_model") -> None:
 
+        nltk.download('punkt_tab')
+        nltk.download('omw-1.4', quiet=True)
         nltk.download('punkt', quiet=True)
         nltk.download('wordnet', quiet=True)
 
@@ -85,7 +89,7 @@ class BasicAssistant:
 
         if self.hidden_layers is None:
             self.model = Sequential()
-            self.model.add(InputLayer(input_shape=(None, X.shape[1])))
+            self.model.add(InputLayer(shape=(X.shape[1],)))
             self.model.add(Dense(128, activation='relu'))
             self.model.add(Dropout(0.5))
             self.model.add(Dense(64, activation='relu'))
@@ -93,7 +97,7 @@ class BasicAssistant:
             self.model.add(Dense(y.shape[1], activation='softmax'))
         else:
             self.model = Sequential()
-            self.model.add(InputLayer(input_shape=(None, X.shape[1])))
+            self.model.add(InputLayer(shape=(X.shape[1],)))
             for layer in self.hidden_layers:
                 self.model.add(layer)
             self.model.add(Dense(y.shape[1], activation='softmax'))
@@ -107,9 +111,10 @@ class BasicAssistant:
         self.history = self.model.fit(X, y, epochs=epochs, batch_size=5, verbose=1)
 
     def save_model(self):
-        self.model.save(f"{self.model_name}.keras", self.history)
+        self.model.save(f"{self.model_name}.keras")
         pickle.dump(self.words, open(f'{self.model_name}_words.pkl', 'wb'))
         pickle.dump(self.intents, open(f'{self.model_name}_intents.pkl', 'wb'))
+
     
     def load_model(self):
         self.model = load_model(f'{self.model_name}.keras')
@@ -117,7 +122,7 @@ class BasicAssistant:
         self.intents = pickle.load(open(f'{self.model_name}_intents.pkl', 'rb'))
 
     def _predict_intent(self, input_text: str):
-        input_words = nltk.word_tokenize(input_text)
+        input_words = word_tokenize(input_text)
         input_words = [self.lemmatizer.lemmatize(w.lower()) for w in input_words]
 
         input_bag_of_words = [0] * len(self.words)
